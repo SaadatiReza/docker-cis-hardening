@@ -1,0 +1,330 @@
+---
+- name: "5.1 - Enable AppArmor Profile"
+  block:
+    - name: Check AppArmor status
+      command: docker inspect --format '{{ "{{" }} .AppArmorProfile {{ "}}" }}' $(docker ps -lq)
+      register: apparmor_check
+      changed_when: false
+
+    - name: Warn if AppArmor not enabled
+      debug:
+        msg: "WARNING: AppArmor not enabled for container (CIS 5.1)"
+      when: apparmor_check.stdout == ""
+
+- name: "5.2 - Enable SELinux"
+  block:
+    - name: Check SELinux status
+      command: sestatus
+      register: selinux_status
+      ignore_errors: true
+      changed_when: false
+
+    - name: Warn if SELinux not enabled
+      debug:
+        msg: "WARNING: SELinux not enabled (CIS 5.2)"
+      when: "'SELinux status:.*enabled' not in selinux_status.stdout"
+
+- name: "5.3 - Restrict Linux Kernel Capabilities"
+  block:
+    - name: Check container capabilities
+      command: docker inspect --format '{{ "{{" }} .HostConfig.CapAdd {{ "}}" }}' $(docker ps -lq)
+      register: capabilities_check
+      changed_when: false
+
+    - name: Warn about added capabilities
+      debug:
+        msg: "WARNING: Container has added capabilities (CIS 5.3)"
+      when: capabilities_check.stdout != "<no value>"
+
+- name: "5.4 - Do not use privileged containers"
+  block:
+    - name: Check for privileged containers
+      command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .HostConfig.Privileged {{ "}}" }}'
+      register: privileged_containers
+      changed_when: false
+
+    - name: Warn about privileged containers
+      debug:
+        msg: "WARNING: Privileged container detected ({{ item }}) (CIS 5.4)"
+      loop: "{{ privileged_containers.stdout_lines }}"
+      when: "'true' in item"
+
+- name: "5.5 - Do not mount sensitive host system directories"
+  block:
+    - name: Check for sensitive mounts
+      command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .Mounts {{ "}}" }}'
+      register: container_mounts
+      changed_when: false
+
+    - name: Warn about sensitive mounts
+      debug:
+        msg: "WARNING: Sensitive host directory mounted in container ({{ item }}) (CIS 5.5)"
+      loop: "{{ container_mounts.stdout_lines }}"
+      when: "'/etc' in item or '/usr' in item or '/boot' in item"
+
+- name: "5.6 - Do not run ssh within containers"
+  block:
+    - name: Check for ssh processes
+      command: docker top $(docker ps -lq) | grep sshd
+      register: ssh_processes
+      changed_when: false
+      ignore_errors: true
+
+    - name: Warn about ssh processes
+      debug:
+        msg: "WARNING: SSH process found in container (CIS 5.6)"
+      when: ssh_processes.stdout != ""
+
+- name: "5.7 - Do not map privileged ports"
+  block:
+    - name: Check for privileged port mappings
+      command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .NetworkSettings.Ports {{ "}}" }}'
+      register: port_mappings
+      changed_when: false
+
+    - name: Warn about privileged port mappings
+      debug:
+        msg: "WARNING: Privileged port mapping detected ({{ item }}) (CIS 5.7)"
+      loop: "{{ port_mappings.stdout_lines }}"
+      when: "'0.0.0.0:1-' in item or '0.0.0.0:1024-' in item"
+
+- name: "5.8 - Only needed ports should be open"
+  block:
+    - name: Check exposed ports
+      command: docker inspect --format '{{ "{{" }} .Config.ExposedPorts {{ "}}" }}' $(docker ps -lq)
+      register: exposed_ports
+      changed_when: false
+
+    - name: Warn about unnecessary ports
+      debug:
+        msg: "WARNING: Unnecessary ports exposed (CIS 5.8)"
+      when: exposed_ports.stdout != "map[]"
+
+- name: "5.9 - Use only needed networks"
+  block:
+    - name: Check container networks
+      command: docker inspect --format '{{ "{{" }} .NetworkSettings.Networks {{ "}}" }}' $(docker ps -lq)
+      register: container_networks
+      changed_when: false
+
+    - name: Warn about extra networks
+      debug:
+        msg: "WARNING: Container connected to unnecessary networks (CIS 5.9)"
+      when: "'bridge' not in container_networks.stdout"
+
+- name: "5.10 - Use memory limit for containers"
+  block:
+    - name: Check memory limits
+      command: docker inspect --format '{{ "{{" }} .HostConfig.Memory {{ "}}" }}' $(docker ps -lq)
+      register: memory_limits
+      changed_when: false
+
+    - name: Warn about missing memory limits
+      debug:
+        msg: "WARNING: Container has no memory limit (CIS 5.10)"
+      when: memory_limits.stdout == "0"
+
+- name: "5.11 - Set container CPU priority"
+  block:
+    - name: Check CPU shares
+      command: docker inspect --format '{{ "{{" }} .HostConfig.CpuShares {{ "}}" }}' $(docker ps -lq)
+      register: cpu_shares
+      changed_when: false
+
+    - name: Warn about default CPU shares
+      debug:
+        msg: "WARNING: Container using default CPU shares (CIS 5.11)"
+      when: cpu_shares.stdout == "0"
+
+- name: "5.12 - Mount container root FS as read only"
+  block:
+    - name: Check read-only root FS
+      command: docker inspect --format '{{ "{{" }} .HostConfig.ReadonlyRootfs {{ "}}" }}' $(docker ps -lq)
+      register: readonly_rootfs
+      changed_when: false
+
+    - name: Warn about writable root FS
+      debug:
+        msg: "WARNING: Container root filesystem is writable (CIS 5.12)"
+      when: readonly_rootfs.stdout == "false"
+
+- name: "5.13 - Bind incoming container traffic to specific host interface"
+  block:
+    - name: Check port bindings
+      command: docker inspect --format '{{ "{{" }} .NetworkSettings.Ports {{ "}}" }}' $(docker ps -lq)
+      register: port_bindings
+      changed_when: false
+
+    - name: Warn about binding to all interfaces
+      debug:
+        msg: "WARNING: Container ports bound to all interfaces (CIS 5.13)"
+      when: "'0.0.0.0' in port_bindings.stdout"
+
+- name: "5.14 - Set 'on-failure' container restart policy"
+  block:
+    - name: Check restart policies
+      command: docker inspect --format '{{ "{{" }} .HostConfig.RestartPolicy.Name {{ "}}" }}' $(docker ps -lq)
+      register: restart_policies
+      changed_when: false
+
+    - name: Warn about inappropriate restart policies
+      debug:
+        msg: "WARNING: Container has inappropriate restart policy ({{ item }}) (CIS 5.14)"
+      loop: "{{ restart_policies.stdout_lines }}"
+      when: "'always' in item or 'unless-stopped' in item"
+
+- name: "5.15 - Do not share host process namespace"
+  block:
+    - name: Check PID namespace sharing
+      command: docker inspect --format '{{ "{{" }} .HostConfig.PidMode {{ "}}" }}' $(docker ps -lq)
+      register: pid_mode
+      changed_when: false
+
+    - name: Warn about shared PID namespace
+      debug:
+        msg: "WARNING: Container sharing host PID namespace (CIS 5.15)"
+      when: "'host' in pid_mode.stdout"
+
+- name: "5.16 - Do not share host IPC namespace"
+  block:
+    - name: Check IPC namespace sharing
+      command: docker inspect --format '{{ "{{" }} .HostConfig.IpcMode {{ "}}" }}' $(docker ps -lq)
+      register: ipc_mode
+      changed_when: false
+
+    - name: Warn about shared IPC namespace
+      debug:
+        msg: "WARNING: Container sharing host IPC namespace (CIS 5.16)"
+      when: "'host' in ipc_mode.stdout"
+
+- name: "5.17 - Do not share host network namespace"
+  block:
+    - name: Check network namespace sharing
+      command: docker inspect --format '{{ "{{" }} .HostConfig.NetworkMode {{ "}}" }}' $(docker ps -lq)
+      register: network_mode
+      changed_when: false
+
+    - name: Warn about shared network namespace
+      debug:
+        msg: "WARNING: Container sharing host network namespace (CIS 5.17)"
+      when: "'host' in network_mode.stdout"
+
+- name: "5.18 - Restrict host device access"
+  block:
+    - name: Check device access
+      command: docker inspect --format '{{ "{{" }} .HostConfig.Devices {{ "}}" }}' $(docker ps -lq)
+      register: device_access
+      changed_when: false
+
+    - name: Warn about device access
+      debug:
+        msg: "WARNING: Container has host device access (CIS 5.18)"
+      when: device_access.stdout != "[]"
+
+- name: "5.19 - Restrict container from acquiring new privileges"
+  block:
+    - name: Check no-new-privileges
+      command: docker inspect --format '{{ "{{" }} .HostConfig.SecurityOpt {{ "}}" }}' $(docker ps -lq)
+      register: security_opts
+      changed_when: false
+
+    - name: Warn about missing no-new-privileges
+      debug:
+        msg: "WARNING: Container can acquire new privileges (CIS 5.19)"
+      when: "'no-new-privileges' not in security_opts.stdout"
+
+- name: "5.20 - Do not share host UTS namespace"
+  block:
+    - name: Check UTS namespace sharing
+      command: docker inspect --format '{{ "{{" }} .HostConfig.UTSMode {{ "}}" }}' $(docker ps -lq)
+      register: uts_mode
+      changed_when: false
+
+    - name: Warn about shared UTS namespace
+      debug:
+        msg: "WARNING: Container sharing host UTS namespace (CIS 5.20)"
+      when: "'host' in uts_mode.stdout"
+
+- name: "5.21 - Do not disable default seccomp profile"
+  block:
+    - name: Check seccomp profile
+      command: docker inspect --format '{{ "{{" }} .HostConfig.SecurityOpt {{ "}}" }}' $(docker ps -lq)
+      register: seccomp_profile
+      changed_when: false
+
+    - name: Warn about disabled seccomp
+      debug:
+        msg: "WARNING: Container has disabled default seccomp profile (CIS 5.21)"
+      when: "'seccomp=unconfined' in seccomp_profile.stdout"
+
+- name: "5.22 - Use cgroup namespace"
+  block:
+    - name: Check cgroup namespace
+      command: docker inspect --format '{{ "{{" }} .HostConfig.CgroupnsMode {{ "}}" }}' $(docker ps -lq)
+      register: cgroup_ns
+      changed_when: false
+
+    - name: Warn about host cgroup namespace
+      debug:
+        msg: "WARNING: Container sharing host cgroup namespace (CIS 5.22)"
+      when: "'host' in cgroup_ns.stdout"
+
+- name: "5.23 - Restrict container from gaining additional privileges"
+  block:
+    - name: Check additional privileges
+      command: docker inspect --format '{{ "{{" }} .HostConfig.SecurityOpt {{ "}}" }}' $(docker ps -lq)
+      register: security_opts
+      changed_when: false
+
+    - name: Warn about additional privileges
+      debug:
+        msg: "WARNING: Container can gain additional privileges (CIS 5.23)"
+      when: "'no-new-privileges=false' in security_opts.stdout"
+
+- name: "5.24 - Check container health at runtime"
+  block:
+    - name: Check health status
+      command: docker inspect --format '{{ "{{" }} .State.Health.Status {{ "}}" }}' $(docker ps -lq)
+      register: health_status
+      changed_when: false
+
+    - name: Warn about unhealthy containers
+      debug:
+        msg: "WARNING: Container health status is {{ health_status.stdout }} (CIS 5.24)"
+      when: health_status.stdout != "healthy"
+
+- name: "5.25 - Use PIDs cgroup limit"
+  block:
+    - name: Check PIDs limit
+      command: docker inspect --format '{{ "{{" }} .HostConfig.PidsLimit {{ "}}" }}' $(docker ps -lq)
+      register: pids_limit
+      changed_when: false
+
+    - name: Warn about unlimited PIDs
+      debug:
+        msg: "WARNING: Container has unlimited PIDs (CIS 5.25)"
+      when: pids_limit.stdout == "0"
+
+- name: "5.26 - Do not share host user namespaces"
+  block:
+    - name: Check user namespace
+      command: docker inspect --format '{{ "{{" }} .HostConfig.UsernsMode {{ "}}" }}' $(docker ps -lq)
+      register: userns_mode
+      changed_when: false
+
+    - name: Warn about shared user namespace
+      debug:
+        msg: "WARNING: Container sharing host user namespace (CIS 5.26)"
+      when: "'host' in userns_mode.stdout"
+
+- name: "5.27 - Do not mount Docker socket inside containers"
+  block:
+    - name: Check Docker socket mounts
+      command: docker inspect --format '{{ "{{" }} .Mounts {{ "}}" }}' $(docker ps -lq)
+      register: socket_mounts
+      changed_when: false
+
+    - name: Warn about Docker socket mounts
+      debug:
+        msg: "WARNING: Container has Docker socket mounted (CIS 5.27)"
+      when: "'docker.sock' in socket_mounts.stdout"

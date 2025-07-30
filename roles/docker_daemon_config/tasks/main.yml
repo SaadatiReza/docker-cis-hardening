@@ -1,0 +1,207 @@
+---
+- name: "2.1 - Restrict network traffic between containers"
+  block:
+    - name: Ensure daemon.json exists
+      file:
+        path: /etc/docker/daemon.json
+        state: touch
+
+    - name: Set icc=false in daemon.json
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"icc":'
+        line: '  "icc": false,'
+        insertafter: '{'
+        state: present
+      notify: restart docker
+
+- name: "2.2 - Set the logging level"
+  block:
+    - name: Configure log level
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"log-level":'
+        line: '  "log-level": "info",'
+        insertafter: '{'
+        state: present
+      notify: restart docker
+
+- name: "2.3 - Allow Docker to make changes to iptables"
+  block:
+    - name: Configure iptables
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"iptables":'
+        line: '  "iptables": true,'
+        insertafter: '{'
+        state: present
+      notify: restart docker
+
+- name: "2.4 - Do not use insecure registries"
+  block:
+    - name: Ensure no insecure registries are configured
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"insecure-registries":'
+        state: absent
+      notify: restart docker
+
+- name: "2.5 - Set default ulimits"
+  block:
+    - name: Configure default ulimits
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"default-ulimits":'
+        line: '  "default-ulimits": {"nofile": {"Name": "nofile", "Soft": 1024, "Hard": 1024}},'
+        insertafter: '{'
+        state: present
+      notify: restart docker
+
+- name: "2.6 - Enable user namespace support"
+  block:
+    - name: Configure userns-remap
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"userns-remap":'
+        line: '  "userns-remap": "default",'
+        insertafter: '{'
+        state: present
+      when: docker_cis_config.userns_remap != ""
+      notify: restart docker
+
+- name: "2.7 - Configure default cgroup usage"
+  block:
+    - name: Set default cgroup
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"cgroup-parent":'
+        line: '  "cgroup-parent": "docker.slice",'
+        insertafter: '{'
+        state: present
+      notify: restart docker
+
+- name: "2.8 - Set base device size"
+  block:
+    - name: Configure base device size
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"storage-opts":'
+        line: '  "storage-opts": ["dm.basesize=10G"],'
+        insertafter: '{'
+        state: present
+      notify: restart docker
+
+- name: "2.9 - Enable Docker client command authorization"
+  block:
+    - name: Install authorization plugin
+      command: docker plugin install --grant-all-permissions vieux/sshfs
+      when: "'authorization' not in docker_info.SecurityOptions"
+      notify: restart docker
+
+- name: "2.10 - Configure centralized and remote logging"
+  block:
+    - name: Configure logging driver
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"log-driver":'
+        line: '  "log-driver": "{{ docker_cis_config.log_driver }}",'
+        insertafter: '{'
+        state: present
+      notify: restart docker
+
+    - name: Configure logging options
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"log-opts":'
+        line: '  "log-opts": {"max-size": "{{ docker_cis_config.log_opts.max-size }}", "max-file": "{{ docker_cis_config.log_opts.max-file }}"},'
+        insertafter: '{'
+        state: present
+      notify: restart docker
+
+- name: "2.11 - Disable operations on legacy registry"
+  block:
+    - name: Disable legacy registry
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"disable-legacy-registry":'
+        line: '  "disable-legacy-registry": {{ docker_cis_config.disable_legacy_registry | lower }},'
+        insertafter: '{'
+        state: present
+      notify: restart docker
+
+- name: "2.12 - Enable live restore"
+  block:
+    - name: Configure live restore
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"live-restore":'
+        line: '  "live-restore": {{ docker_cis_config.live_restore | lower }},'
+        insertafter: '{'
+        state: present
+      notify: restart docker
+
+- name: "2.13 - Disable Userland Proxy"
+  block:
+    - name: Configure userland proxy
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"userland-proxy":'
+        line: '  "userland-proxy": {{ docker_cis_config.userland_proxy | lower }},'
+        insertafter: '{'
+        state: present
+      notify: restart docker
+
+- name: "2.14 - Apply a daemon-wide custom seccomp profile"
+  block:
+    - name: Configure seccomp profile
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"seccomp-profile":'
+        line: '  "seccomp-profile": "/etc/docker/seccomp/default.json",'
+        insertafter: '{'
+        state: present
+      notify: restart docker
+
+- name: "2.15 - Create docker.service.d directory"
+  block:
+    - name: Ensure directory exists
+      file:
+        path: /etc/systemd/system/docker.service.d
+        state: directory
+        mode: '0755'
+
+- name: "2.16 - Configure TLS authentication for Docker daemon"
+  block:
+    - name: Ensure TLS is configured
+      command: docker --tlsverify --tlscacert=ca.pem --tlscert=cert.pem --tlskey=key.pem version
+      changed_when: false
+      ignore_errors: true
+      register: tls_check
+
+    - name: Warn if TLS not configured
+      debug:
+        msg: "WARNING: TLS authentication not configured for Docker daemon (CIS 2.16)"
+      when: tls_check.rc != 0
+
+- name: "2.17 - Configure default ulimits in systemd"
+  block:
+    - name: Configure systemd ulimits
+      blockinfile:
+        path: /etc/systemd/system/docker.service.d/limits.conf
+        create: yes
+        block: |
+          [Service]
+          LimitNOFILE=1024
+          LimitNPROC=1024
+      notify: restart docker
+
+- name: "2.18 - Enable no-new-privileges"
+  block:
+    - name: Configure no-new-privileges
+      lineinfile:
+        path: /etc/docker/daemon.json
+        regexp: '"no-new-privileges":'
+        line: '  "no-new-privileges": {{ docker_cis_config.no_new_privileges | lower }},'
+        insertafter: '{'
+        state: present
+      notify: restart docker

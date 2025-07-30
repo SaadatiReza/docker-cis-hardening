@@ -1,0 +1,104 @@
+---
+- name: "6.1 - Perform regular security audits"
+  block:
+    - name: Check audit logs
+      command: ausearch -k docker | head -10
+      register: docker_audit_logs
+      changed_when: false
+      ignore_errors: true
+
+    - name: Warn if no audit logs found
+      debug:
+        msg: "WARNING: No Docker audit logs found (CIS 6.1)"
+      when: docker_audit_logs.rc != 0
+
+- name: "6.2 - Monitor Docker containers usage"
+  block:
+    - name: Check for monitoring tools
+      command: ps aux | grep -E 'prometheus|grafana|datadog'
+      register: monitoring_tools
+      changed_when: false
+      ignore_errors: true
+
+    - name: Warn if no monitoring tools found
+      debug:
+        msg: "WARNING: No container monitoring tools detected (CIS 6.2)"
+      when: monitoring_tools.stdout == ""
+
+- name: "6.3 - Monitor Docker daemon usage"
+  block:
+    - name: Check Docker daemon metrics
+      command: curl -s --unix-socket /var/run/docker.sock http://localhost/metrics
+      register: docker_metrics
+      changed_when: false
+      ignore_errors: true
+
+    - name: Warn if metrics not enabled
+      debug:
+        msg: "WARNING: Docker daemon metrics not enabled (CIS 6.3)"
+      when: docker_metrics.rc != 0
+
+- name: "6.4 - Monitor Docker files and directories"
+  block:
+    - name: Check file monitoring
+      command: auditctl -l | grep docker
+      register: file_monitoring
+      changed_when: false
+
+    - name: Warn if Docker files not monitored
+      debug:
+        msg: "WARNING: Docker files not properly monitored (CIS 6.4)"
+      when: file_monitoring.stdout == ""
+
+- name: "6.5 - Update Docker to the latest version"
+  block:
+    - name: Get installed Docker version
+      command: docker version --format '{{ "{{" }} .Server.Version {{ "}}" }}'
+      register: docker_version
+      changed_when: false
+
+    - name: Get latest Docker version
+      command: curl -s https://download.docker.com/linux/static/stable/x86_64/ | grep -oP 'docker-\K[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1
+      register: latest_docker_version
+      changed_when: false
+
+    - name: Warn if not latest version
+      debug:
+        msg: "WARNING: Docker version {{ docker_version.stdout }} is not the latest ({{ latest_docker_version.stdout }}) (CIS 6.5)"
+      when: docker_version.stdout != latest_docker_version.stdout
+
+- name: "6.6 - Ensure only trusted users control Docker daemon"
+  block:
+    - name: Check docker group members
+      command: getent group docker
+      register: docker_group
+      changed_when: false
+
+    - name: Warn about docker group members
+      debug:
+        msg: "WARNING: Untrusted users in docker group ({{ docker_group.stdout }}) (CIS 6.6)"
+      when: "'docker' in docker_group.stdout and docker_group.stdout.split(':')[3] != ''"
+
+- name: "6.7 - Audit Docker daemon commands"
+  block:
+    - name: Check Docker command auditing
+      command: auditctl -l | grep '/usr/bin/docker'
+      register: docker_command_audit
+      changed_when: false
+
+    - name: Warn if Docker commands not audited
+      debug:
+        msg: "WARNING: Docker commands not being audited (CIS 6.7)"
+      when: docker_command_audit.stdout == ""
+
+- name: "6.8 - Audit Docker files and directories"
+  block:
+    - name: Verify Docker file audits
+      command: auditctl -l | grep -E '/etc/docker|/var/lib/docker|/etc/default/docker'
+      register: docker_file_audits
+      changed_when: false
+
+    - name: Warn if Docker files not audited
+      debug:
+        msg: "WARNING: Docker files not properly audited (CIS 6.8)"
+      when: docker_file_audits.stdout == ""

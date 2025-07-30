@@ -1,0 +1,184 @@
+---
+- name: "3.1 - Verify Docker daemon config file permissions"
+  block:
+    - name: Set permissions for docker.service
+      file:
+        path: /usr/lib/systemd/system/docker.service
+        owner: root
+        group: root
+        mode: '0644'
+
+- name: "3.2 - Verify Docker socket file permissions"
+  block:
+    - name: Set permissions for docker.sock
+      file:
+        path: /var/run/docker.sock
+        owner: root
+        group: docker
+        mode: '0660'
+
+- name: "3.3 - Verify Docker daemon.json permissions"
+  block:
+    - name: Ensure daemon.json exists
+      file:
+        path: /etc/docker/daemon.json
+        state: touch
+
+    - name: Set permissions for daemon.json
+      file:
+        path: /etc/docker/daemon.json
+        owner: root
+        group: root
+        mode: '0644'
+
+- name: "3.4 - Verify Docker registry config file permissions"
+  block:
+    - name: Check if registry config exists
+      stat:
+        path: /etc/docker/registry/config.yml
+      register: registry_config
+
+    - name: Set permissions if file exists
+      file:
+        path: /etc/docker/registry/config.yml
+        owner: root
+        group: root
+        mode: '0644'
+      when: registry_config.stat.exists
+
+- name: "3.5 - Verify TLS certificate file permissions"
+  block:
+    - name: Check if TLS certs exist
+      stat:
+        path: /etc/docker/tls/ca.pem
+      register: tls_ca
+
+    - name: Set permissions for TLS certs
+      file:
+        path: "{{ item.path }}"
+        owner: root
+        group: root
+        mode: '0644'
+      loop:
+        - { path: '/etc/docker/tls/ca.pem' }
+        - { path: '/etc/docker/tls/cert.pem' }
+        - { path: '/etc/docker/tls/key.pem' }
+      when: tls_ca.stat.exists
+
+- name: "3.6 - Verify Docker service file ownership"
+  block:
+    - name: Verify docker.service ownership
+      file:
+        path: /usr/lib/systemd/system/docker.service
+        owner: root
+        group: root
+
+- name: "3.7 - Verify Docker socket file ownership"
+  block:
+    - name: Verify docker.sock ownership
+      file:
+        path: /var/run/docker.sock
+        owner: root
+        group: docker
+
+- name: "3.8 - Verify Docker daemon.json ownership"
+  block:
+    - name: Verify daemon.json ownership
+      file:
+        path: /etc/docker/daemon.json
+        owner: root
+        group: root
+
+- name: "3.9 - Verify Docker registry config ownership"
+  block:
+    - name: Check if registry config exists
+      stat:
+        path: /etc/docker/registry/config.yml
+      register: registry_config
+
+    - name: Verify ownership if file exists
+      file:
+        path: /etc/docker/registry/config.yml
+        owner: root
+        group: root
+      when: registry_config.stat.exists
+
+- name: "3.10 - Verify TLS certificate ownership"
+  block:
+    - name: Check if TLS certs exist
+      stat:
+        path: /etc/docker/tls/ca.pem
+      register: tls_ca
+
+    - name: Verify TLS cert ownership
+      file:
+        path: "{{ item.path }}"
+        owner: root
+        group: root
+      loop:
+        - { path: '/etc/docker/tls/ca.pem' }
+        - { path: '/etc/docker/tls/cert.pem' }
+        - { path: '/etc/docker/tls/key.pem' }
+      when: tls_ca.stat.exists
+
+- name: "3.11 - Verify Docker directories permissions"
+  block:
+    - name: Set permissions for Docker directories
+      file:
+        path: "{{ item.path }}"
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - { path: '/etc/docker' }
+        - { path: '/etc/docker/tls' }
+        - { path: '/etc/docker/registry' }
+
+- name: "3.12 - Verify Docker directories ownership"
+  block:
+    - name: Verify Docker directories ownership
+      file:
+        path: "{{ item.path }}"
+        owner: root
+        group: root
+      loop:
+        - { path: '/etc/docker' }
+        - { path: '/etc/docker/tls' }
+        - { path: '/etc/docker/registry' }
+
+- name: "3.13 - Verify Docker registry certificate permissions"
+  block:
+    - name: Check if registry cert exists
+      stat:
+        path: /etc/docker/registry/ca.crt
+      register: registry_cert
+
+    - name: Set permissions if file exists
+      file:
+        path: /etc/docker/registry/ca.crt
+        owner: root
+        group: root
+        mode: '0644'
+      when: registry_cert.stat.exists
+
+- name: "3.14 - Verify Docker registry certificate ownership"
+  block:
+    - name: Check if registry cert exists
+      stat:
+        path: /etc/docker/registry/ca.crt
+      register: registry_cert
+
+    - name: Verify ownership if file exists
+      file:
+        path: /etc/docker/registry/ca.crt
+        owner: root
+        group: root
+      when: registry_cert.stat.exists
+
+- name: "3.15 - Verify Docker content trust"
+  block:
+    - name: Enable Docker Content Trust
+      lineinfile:
+        path: /etc/environment
+        line: 'export DOCKER_CONTENT_TRUST=1'
+        state: present

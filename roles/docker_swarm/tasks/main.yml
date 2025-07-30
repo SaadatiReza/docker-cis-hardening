@@ -1,0 +1,124 @@
+---
+- name: "7.1 - Ensure swarm mode is not enabled if not needed"
+  block:
+    - name: Check swarm mode
+      command: docker info --format '{{ "{{" }} .Swarm.LocalNodeState {{ "}}" }}'
+      register: swarm_state
+      changed_when: false
+
+    - name: Warn if swarm enabled unnecessarily
+      debug:
+        msg: "WARNING: Swarm mode is enabled but may not be needed (CIS 7.1)"
+      when: swarm_state.stdout != "inactive"
+
+- name: "7.2 - Ensure minimum number of manager nodes"
+  block:
+    - name: Check manager nodes
+      command: docker node ls --filter role=manager --format '{{ "{{" }} .ID {{ "}}" }}' | wc -l
+      register: manager_nodes
+      changed_when: false
+
+    - name: Warn about single manager
+      debug:
+        msg: "WARNING: Only one swarm manager node (CIS 7.2)"
+      when: manager_nodes.stdout|int < 3
+
+- name: "7.3 - Ensure swarm services bind to specific host interface"
+  block:
+    - name: Check service bindings
+      command: docker service ls --quiet | xargs docker service inspect --format '{{ "{{" }} .Endpoint.Spec.Ports {{ "}}" }}'
+      register: service_ports
+      changed_when: false
+
+    - name: Warn about binding to all interfaces
+      debug:
+        msg: "WARNING: Swarm service bound to all interfaces (CIS 7.3)"
+      when: "'0.0.0.0' in service_ports.stdout"
+
+- name: "7.4 - Ensure data exchanged between containers are encrypted"
+  block:
+    - name: Check overlay network encryption
+      command: docker network ls --filter driver=overlay --quiet | xargs docker network inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .Options "com.docker.network.driver.overlay.vxlanid_list" {{ "}}" }}'
+      register: overlay_encryption
+      changed_when: false
+
+    - name: Warn about unencrypted overlay networks
+      debug:
+        msg: "WARNING: Overlay network not encrypted ({{ item }}) (CIS 7.4)"
+      loop: "{{ overlay_encryption.stdout_lines }}"
+      when: "'encrypted' not in item"
+
+- name: "7.5 - Ensure management plane traffic is separated"
+  block:
+    - name: Check management plane network
+      command: docker network ls --filter name=mgmt_plane --quiet | wc -l
+      register: mgmt_network
+      changed_when: false
+
+    - name: Warn about missing management plane network
+      debug:
+        msg: "WARNING: No dedicated management plane network (CIS 7.5)"
+      when: mgmt_network.stdout == "0"
+
+- name: "7.6 - Ensure swarm manager auto-lock is enabled"
+  block:
+    - name: Check auto-lock status
+      command: docker swarm inspect --format '{{ "{{" }} .Spec.EncryptionConfig.AutoLockManagers {{ "}}" }}'
+      register: auto_lock
+      changed_when: false
+      ignore_errors: true
+
+    - name: Warn if auto-lock disabled
+      debug:
+        msg: "WARNING: Swarm auto-lock not enabled (CIS 7.6)"
+      when: auto_lock.stdout != "true"
+
+- name: "7.7 - Ensure node certificate rotation period is set"
+  block:
+    - name: Check certificate rotation
+      command: docker info --format '{{ "{{" }} .Swarm.Cluster.Spec.CAConfig.NodeCertExpiry {{ "}}" }}'
+      register: cert_expiry
+      changed_when: false
+
+    - name: Warn about certificate rotation
+      debug:
+        msg: "WARNING: Node certificate rotation period not set (CIS 7.7)"
+      when: cert_expiry.stdout == "0s"
+
+- name: "7.8 - Ensure CA certificates are rotated"
+  block:
+    - name: Check CA certificate rotation
+      command: docker info --format '{{ "{{" }} .Swarm.Cluster.Spec.CAConfig.ExternalCA {{ "}}" }}'
+      register: ca_rotation
+      changed_when: false
+
+    - name: Warn about CA certificate rotation
+      debug:
+        msg: "WARNING: CA certificates not configured for rotation (CIS 7.8)"
+      when: ca_rotation.stdout == "<nil>"
+
+- name: "7.9 - Ensure swarm manager is run in auto-lock mode"
+  block:
+    - name: Verify auto-lock mode
+      command: docker swarm unlock-key --quiet
+      register: unlock_key
+      changed_when: false
+      ignore_errors: true
+
+    - name: Warn if not in auto-lock mode
+      debug:
+        msg: "WARNING: Swarm manager not in auto-lock mode (CIS 7.9)"
+      when: unlock_key.rc != 0
+
+- name: "7.10 - Ensure swarm manager logs are enabled"
+  block:
+    - name: Check manager logs
+      command: docker service logs $(docker service ls --filter name=swarm-manager --quiet)
+      register: manager_logs
+      changed_when: false
+      ignore_errors: true
+
+    - name: Warn if logs not enabled
+      debug:
+        msg: "WARNING: Swarm manager logs not enabled (CIS 7.10)"
+      when: manager_logs.rc != 0

@@ -1,0 +1,143 @@
+---
+- name: "4.1 - Create a user for the container"
+  block:
+    - name: Ensure containers run as non-root
+      command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Config.User {{ "}}" }}'
+      register: container_users
+      changed_when: false
+
+    - name: Warn about containers running as root
+      debug:
+        msg: "WARNING: Container {{ item }} is running as root (CIS 4.1)"
+      loop: "{{ container_users.stdout_lines }}"
+      when: item == ""
+
+- name: "4.2 - Use trusted base images"
+  block:
+    - name: Check for untrusted images
+      command: docker images --quiet --filter "dangling=false" | xargs docker inspect --format '{{ "{{" }} .RepoTags {{ "}}" }}: {{ "{{" }} .DockerVersion {{ "}}" }}'
+      register: image_trust
+      changed_when: false
+
+    - name: Warn about untrusted images
+      debug:
+        msg: "WARNING: Untrusted image found (CIS 4.2)"
+      when: "'untrusted' in image_trust.stdout"
+
+- name: "4.3 - Do not install unnecessary packages"
+  block:
+    - name: Check image sizes
+      command: docker images --format '{{ "{{" }} .Repository {{ "}}" }}:{{ "{{" }} .Tag {{ "}}" }} {{ "{{" }} .Size {{ "}}" }}'
+      register: image_sizes
+      changed_when: false
+
+    - name: Warn about large images
+      debug:
+        msg: "WARNING: Large image detected ({{ item }}) (CIS 4.3)"
+      loop: "{{ image_sizes.stdout_lines }}"
+      when: "'GB' in item"
+
+- name: "4.4 - Scan images for vulnerabilities"
+  block:
+    - name: Check if Clair is installed
+      command: which clair-scanner
+      register: clair_check
+      ignore_errors: true
+      changed_when: false
+
+    - name: Warn if no vulnerability scanner found
+      debug:
+        msg: "WARNING: No vulnerability scanner installed (CIS 4.4)"
+      when: clair_check.rc != 0
+
+- name: "4.5 - Enable Content trust for Docker"
+  block:
+    - name: Verify DOCKER_CONTENT_TRUST is set
+      command: echo $DOCKER_CONTENT_TRUST
+      register: content_trust
+      changed_when: false
+
+    - name: Warn if content trust not enabled
+      debug:
+        msg: "WARNING: DOCKER_CONTENT_TRUST not enabled (CIS 4.5)"
+      when: content_trust.stdout != "1"
+
+- name: "4.6 - Add HEALTHCHECK instruction"
+  block:
+    - name: Check for containers without healthcheck
+      command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .Config.Healthcheck {{ "}}" }}'
+      register: healthchecks
+      changed_when: false
+
+    - name: Warn about containers without healthcheck
+      debug:
+        msg: "WARNING: Container {{ item }} has no HEALTHCHECK (CIS 4.6)"
+      loop: "{{ healthchecks.stdout_lines }}"
+      when: "'<nil>' in item"
+
+- name: "4.7 - Do not use update instructions alone"
+  block:
+    - name: Check Dockerfiles for update instructions
+      find:
+        paths: /
+        patterns: "Dockerfile"
+        contains: "apt-get upgrade"
+      register: update_files
+
+    - name: Warn about update instructions
+      debug:
+        msg: "WARNING: Found Dockerfile with update instruction ({{ item.path }}) (CIS 4.7)"
+      loop: "{{ update_files.files }}"
+
+- name: "4.8 - Remove setuid and setgid permissions"
+  block:
+    - name: Check for setuid/setgid binaries
+      command: find / -perm /6000 -type f -exec ls -ld {} \; 2>/dev/null
+      register: suid_files
+      changed_when: false
+
+    - name: Warn about setuid/setgid binaries
+      debug:
+        msg: "WARNING: Found setuid/setgid binary (CIS 4.8)"
+      when: suid_files.stdout != ""
+
+- name: "4.9 - Use COPY instead of ADD"
+  block:
+    - name: Check Dockerfiles for ADD instructions
+      find:
+        paths: /
+        patterns: "Dockerfile"
+        contains: "ADD "
+      register: add_files
+
+    - name: Warn about ADD instructions
+      debug:
+        msg: "WARNING: Found Dockerfile with ADD instruction ({{ item.path }}) (CIS 4.9)"
+      loop: "{{ add_files.files }}"
+
+- name: "4.10 - Do not store secrets in Dockerfiles"
+  block:
+    - name: Check Dockerfiles for secrets
+      find:
+        paths: /
+        patterns: "Dockerfile"
+        contains: "password|secret|key"
+      register: secret_files
+
+    - name: Warn about secrets in Dockerfiles
+      debug:
+        msg: "WARNING: Found Dockerfile with potential secret ({{ item.path }}) (CIS 4.10)"
+      loop: "{{ secret_files.files }}"
+
+- name: "4.11 - Install verified packages only"
+  block:
+    - name: Check for unsigned packages
+      command: docker exec $(docker ps -lq) rpm -qa --nosignature --nodigest
+      register: unsigned_packages
+      ignore_errors: true
+      changed_when: false
+
+    - name: Warn about unsigned packages
+      debug:
+        msg: "WARNING: Found unsigned packages in container (CIS 4.11)"
+      when: unsigned_packages.stdout != ""

@@ -1,0 +1,36 @@
+---
+- name: Apply Docker CIS Hardening v1.8
+  hosts: all
+  become: true
+  vars_files:
+    - defaults/main.yml
+
+  pre_tasks:
+    - name: Gather OS facts
+      setup:
+        gather_subset: min
+
+  roles:
+    - role: pre_requirements
+      tags: [pre, all]
+    - role: host_configuration
+      tags: [host, section1, all]
+    - role: docker_daemon_config
+      tags: [daemon, section2, all]
+    - role: docker_daemon_files
+      tags: [files, section3, all]
+    - role: container_images
+      tags: [images, section4, all]
+    - role: container_runtime
+      tags: [runtime, section5, all]
+    - role: docker_security
+      tags: [security, section6, all]
+    - role: docker_swarm
+      tags: [swarm, section7, all]
+    - role: post_checks
+      tags: [verify, all]
+
+  post_tasks:
+    - name: Display completion message
+      debug:
+        msg: "Docker CIS Hardening completed. Please review any warnings."
