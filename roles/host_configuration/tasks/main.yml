@@ -4,7 +4,7 @@
     - name: Check if separate partition exists
       command: mount | grep /var/lib/docker
       register: docker_partition
-      ignore_errors: yes
+ #     ignore_errors: yes
       changed_when: false
 
     - name: Warn if no separate partition

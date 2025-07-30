@@ -1,0 +1,52 @@
+---
+- name: Verify Docker CIS benchmark compliance
+  block:
+    - name: Run Docker Bench for Security
+      block:
+        - name: Clone Docker Bench for Security
+          git:
+            repo: https://github.com/docker/docker-bench-security.git
+            dest: /tmp/docker-bench-security
+            version: master
+
+        - name: Run Docker Bench for Security
+          command: sh docker-bench-security.sh
+          args:
+            chdir: /tmp/docker-bench-security
+          register: bench_results
+          changed_when: false
+
+        - name: Display critical findings
+          debug:
+            msg: "CRITICAL: {{ item }}"
+          loop: "{{ bench_results.stdout_lines | select('match', '\\[WARN\\].*') | list }}"
+
+      when: ansible_check_mode == false
+
+- name: Generate compliance report
+  block:
+    - name: Create report directory
+      file:
+        path: /var/log/docker_cis
+        state: directory
+        mode: '0755'
+
+    - name: Save compliance report
+      copy:
+        content: |
+          Docker CIS Hardening Report
+          =========================
+          Date: {{ ansible_date_time.iso8601 }}
+          Host: {{ ansible_hostname }}
+          IP: {{ ansible_default_ipv4.address }}
+
+          Applied Controls:
+          {% for role in ansible_run_tags %}
+          - {{ role }}
+          {% endfor %}
+        dest: /var/log/docker_cis/report-{{ ansible_date_time.date }}.txt
+        mode: '0644'
+
+- name: Display completion message
+  debug:
+    msg: "Docker CIS hardening completed. Review /var/log/docker_cis/report-*.txt for details."
