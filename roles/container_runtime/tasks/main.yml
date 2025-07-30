@@ -38,10 +38,10 @@
 
 - name: "5.4 - Do not use privileged containers"
   block:
-    - name: Check for privileged containers
- #     command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .HostConfig.Privileged {{ "}}" }}'
-      register: privileged_containers
-      changed_when: false
+#     - name: Check for privileged containers
+#  #     command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .HostConfig.Privileged {{ "}}" }}'
+#       register: privileged_containers
+#       changed_when: false
 
     - name: Warn about privileged containers
       debug:
@@ -51,10 +51,10 @@
 
 - name: "5.5 - Do not mount sensitive host system directories"
   block:
-    - name: Check for sensitive mounts
- #     command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .Mounts {{ "}}" }}'
-      register: container_mounts
-      changed_when: false
+#     - name: Check for sensitive mounts
+#  #     command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .Mounts {{ "}}" }}'
+#       register: container_mounts
+#       changed_when: false
 
     - name: Warn about sensitive mounts
       debug:
@@ -77,10 +77,10 @@
 
 - name: "5.7 - Do not map privileged ports"
   block:
-    - name: Check for privileged port mappings
-#      command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .NetworkSettings.Ports {{ "}}" }}'
-      register: port_mappings
-      changed_when: false
+#     - name: Check for privileged port mappings
+# #      command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .NetworkSettings.Ports {{ "}}" }}'
+#       register: port_mappings
+#       changed_when: false
 
     - name: Warn about privileged port mappings
       debug:

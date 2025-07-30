@@ -37,10 +37,10 @@
 
 - name: "7.4 - Ensure data exchanged between containers are encrypted"
   block:
-    - name: Check overlay network encryption
- #     command: docker network ls --filter driver=overlay --quiet | xargs docker network inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .Options "com.docker.network.driver.overlay.vxlanid_list" {{ "}}" }}'
-      register: overlay_encryption
-      changed_when: false
+#     - name: Check overlay network encryption
+#  #     command: docker network ls --filter driver=overlay --quiet | xargs docker network inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .Options "com.docker.network.driver.overlay.vxlanid_list" {{ "}}" }}'
+#       register: overlay_encryption
+#       changed_when: false
 
     - name: Warn about unencrypted overlay networks
       debug:

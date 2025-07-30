@@ -12,17 +12,17 @@
     - auditd
   when: ansible_os_family == 'Debian'
 
-- name: Add Docker GPG key
-  apt_key:
-    url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
-    state: present
+# - name: Add Docker GPG key
+#   apt_key:
+#     url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
+#     state: present
 
-- name: Add Docker repository
-  apt_repository:
-    repo: "deb [arch=amd64] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
-    state: present
-    update_cache: yes
-  when: ansible_os_family == 'Debian'
+# - name: Add Docker repository
+#   apt_repository:
+#     repo: "deb [arch=amd64] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+#     state: present
+#     update_cache: yes
+#   when: ansible_os_family == 'Debian'
 
 - name: Install Docker CE
   package:

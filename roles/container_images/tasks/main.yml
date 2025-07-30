@@ -14,10 +14,10 @@
 
 - name: "4.2 - Use trusted base images"
   block:
-    - name: Check for untrusted images
- #     command: docker images --quiet --filter "dangling=false" | xargs docker inspect --format '{{ "{{" }} .RepoTags {{ "}}" }}: {{ "{{" }} .DockerVersion {{ "}}" }}'
-      register: image_trust
-      changed_when: false
+#     - name: Check for untrusted images
+#  #     command: docker images --quiet --filter "dangling=false" | xargs docker inspect --format '{{ "{{" }} .RepoTags {{ "}}" }}: {{ "{{" }} .DockerVersion {{ "}}" }}'
+#       register: image_trust
+#       changed_when: false
 
     - name: Warn about untrusted images
       debug:
@@ -64,10 +64,10 @@
 
 - name: "4.6 - Add HEALTHCHECK instruction"
   block:
-    - name: Check for containers without healthcheck
- #     command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .Config.Healthcheck {{ "}}" }}'
-      register: healthchecks
-      changed_when: false
+#     - name: Check for containers without healthcheck
+#  #     command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .Config.Healthcheck {{ "}}" }}'
+#       register: healthchecks
+#       changed_when: false
 
     - name: Warn about containers without healthcheck
       debug:
