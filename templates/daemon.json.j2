@@ -28,8 +28,5 @@
   },
   "live-restore": {{ docker_cis_config.live_restore | lower }},
   "userland-proxy": {{ docker_cis_config.userland_proxy | lower }},
-  {% if docker_cis_config.seccomp-profile == true %}
-  "seccomp-profile": "/etc/docker/seccomp/default.json",
-  {% endif}
   "no-new-privileges": {{ docker_cis_config.no_new_privileges | lower }}
 }

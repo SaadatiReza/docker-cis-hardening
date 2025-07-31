@@ -12,6 +12,7 @@ docker_cis_config:
   userland_proxy: false  # Fixed typo (was userland_proxy)
   no_new_privileges: true
   insecure_registries: []
+  seccomp-profile: false
 # Auditd configuration
 auditd_rules:
   - "-w /usr/lib/systemd/system/docker.service -p rwxa -k docker"
