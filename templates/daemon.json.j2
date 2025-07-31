@@ -23,8 +23,8 @@
   "storage-driver": "{{ docker_cis_config.storage_driver | default('overlay2') }}",
   "log-driver": "{{ docker_cis_config.log_driver }}",
   "log-opts": {
-    "max-size": "{{ docker_cis_config.log_opts.max-size }}",
-    "max-file": "{{ docker_cis_config.log_opts.max-file }}"
+    "max-size": "{{ docker_cis_config['log_opts']['max-size'] }}",
+    "max-file": "{{ docker_cis_config['log_opts']['max-file'] }}"
   },
   "live-restore": {{ docker_cis_config.live_restore | lower }},
   "userland-proxy": {{ docker_cis_config.userland_proxy | lower }},
