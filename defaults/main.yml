@@ -1,4 +1,6 @@
 ---
+general_config:
+  docker_repository_address: "https://download.docker.com/linux/"
 docker_cis_config:
   icc: false
   userns_remap: ""
