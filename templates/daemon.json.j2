@@ -21,7 +21,6 @@
   {% endif %}
   "cgroup-parent": "docker.slice",
   "storage-driver": "{{ docker_cis_config.storage_driver | default('overlay2') }}",
-  {% endif %}
   "log-driver": "{{ docker_cis_config.log_driver }}",
   "log-opts": {
     "max-size": "{{ docker_cis_config.log_opts.max-size }}",
