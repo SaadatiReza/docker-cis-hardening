@@ -26,7 +26,13 @@ auditd_rules:
   - "-w /var/run/docker.sock -p rwxa -k docker"
   - "-w /run/containerd -p rwxa -k docker"
   - "-w /var/lib/docker -p rwxa -k docker"
-
+  - "-w /var/run/docker.sock -k docker"
+  - "-w /etc/containerd/config.toml -k docker"
+  - "-w /etc/sysconfig/docker -k docker"
+  - "-w /usr/bin/containerd -k docker"
+  - "-w /usr/bin/containerd-shim -k docker"
+  - "-w /usr/bin/runc -k docker"
+  
 # Files to check permissions
 file_permissions:
   - path: /usr/bin/docker

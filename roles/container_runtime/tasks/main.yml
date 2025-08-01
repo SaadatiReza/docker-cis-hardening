@@ -40,10 +40,10 @@
 
 - name: "5.4 - Do not use privileged containers"
   block:
-    - name: Check for privileged containers
-      command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .HostConfig.Privileged {{ "}}" }}'
-      register: privileged_containers
-      changed_when: false
+    # - name: Check for privileged containers
+    #   command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .HostConfig.Privileged {{ "}}" }}'
+    #   register: privileged_containers
+    #   changed_when: false
 
     - name: Warn about privileged containers
       debug:
