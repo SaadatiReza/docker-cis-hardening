@@ -5,7 +5,7 @@
   {% if docker_cis_config.custom_address_pool is true %}
     "default-address-pools":
   [
-    {"base":"{{ custom_address_pool_spec.base }}","size":{{ custom_address_pool_spec.size }}}
+    {"base":"{{ docker_cis_config.custom_address_pool_spec.base }}","size":{{ docker_cis_config.custom_address_pool_spec.size }}}
   ]
   {% endif %}
   {% if docker_cis_config.insecure_registries is defined and docker_cis_config.insecure_registries %}
