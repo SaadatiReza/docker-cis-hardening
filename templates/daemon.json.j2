@@ -30,10 +30,12 @@
   "cgroup-parent": "docker.slice",
   "storage-driver": "{{ docker_cis_config.storage_driver | default('overlay2') }}",
   "log-driver": "{{ docker_cis_config.log_driver }}",
+  {% if docker_cis_config.log_driver != "syslog" }
   "log-opts": {
     "max-size": "{{ docker_cis_config['log_opts']['max-size'] }}",
     "max-file": "{{ docker_cis_config['log_opts']['max-file'] }}"
   },
+  {% endif}
   "live-restore": {{ docker_cis_config.live_restore | lower }},
   "userland-proxy": {{ docker_cis_config.userland_proxy | lower }},
   "no-new-privileges": {{ docker_cis_config.no_new_privileges | lower }}

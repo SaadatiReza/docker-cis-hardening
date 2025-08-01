@@ -4,7 +4,8 @@ general_config:
 docker_cis_config:
   icc: false
   userns_remap: "default"
-  log_driver: "json-file"
+ # log_driver: "json-file"
+  log_driver: "syslog"
   log_opts:
     max-size: "10m"  # Make sure this matches exactly what's in the template
     max-file: "3"
