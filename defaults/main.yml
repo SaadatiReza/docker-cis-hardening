@@ -3,7 +3,7 @@ general_config:
   docker_repository_address: "https://download.docker.com/linux/"
 docker_cis_config:
   icc: false
-  userns_remap: ""
+  userns_remap: "default"
   log_driver: "json-file"
   log_opts:
     max-size: "10m"  # Make sure this matches exactly what's in the template
@@ -32,7 +32,7 @@ auditd_rules:
   - "-w /usr/bin/containerd -k docker"
   - "-w /usr/bin/containerd-shim -k docker"
   - "-w /usr/bin/runc -k docker"
-  
+
 # Files to check permissions
 file_permissions:
   - path: /usr/bin/docker
