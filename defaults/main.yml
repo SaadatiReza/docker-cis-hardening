@@ -15,6 +15,10 @@ docker_cis_config:
   no_new_privileges: true
   insecure_registries: []
   seccomp-profile: false
+  custom_address_pool: true
+  custom_address_pool_spec:
+    base: "10.10.0.0/16"
+    size: "24"
 # Auditd configuration
 auditd_rules:
   - "-w /usr/lib/systemd/system/docker.service -p rwxa -k docker"
