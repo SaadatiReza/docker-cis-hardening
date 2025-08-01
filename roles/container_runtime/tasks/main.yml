@@ -5,11 +5,13 @@
       command: docker inspect --format '{{ "{{" }} .AppArmorProfile {{ "}}" }}' $(docker ps -lq)
       register: apparmor_check
       changed_when: false
+      ignore_errors: true
 
     - name: Warn if AppArmor not enabled
       debug:
         msg: "WARNING: AppArmor not enabled for container (CIS 5.1)"
       when: apparmor_check.stdout == ""
+      ignore_errors: true
 
 - name: "5.2 - Enable SELinux"
   block:
@@ -38,10 +40,10 @@
 
 - name: "5.4 - Do not use privileged containers"
   block:
-#     - name: Check for privileged containers
-#  #     command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .HostConfig.Privileged {{ "}}" }}'
-#       register: privileged_containers
-#       changed_when: false
+    - name: Check for privileged containers
+      command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Name {{ "}}" }}: {{ "{{" }} .HostConfig.Privileged {{ "}}" }}'
+      register: privileged_containers
+      changed_when: false
 
     - name: Warn about privileged containers
       debug:
