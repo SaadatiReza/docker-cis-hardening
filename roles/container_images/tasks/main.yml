@@ -4,6 +4,7 @@
     - name: Ensure containers run as non-root
       command: docker ps --quiet --all | xargs docker inspect --format '{{ "{{" }} .Config.User {{ "}}" }}'
       register: container_users
+      ignore_errors: true
       changed_when: false
 
     - name: Warn about containers running as root

@@ -1,0 +1,42 @@
+{
+  "icc": {{ docker_cis_config.icc | lower }},
+  "log-level": "info",
+  "iptables": true,
+  {% if docker_cis_config.custom_address_pool is true %}
+    "default-address-pools": [
+    {
+     "base":"{{ docker_cis_config.custom_address_pool_spec.base }}",
+     "size":{{ docker_cis_config.custom_address_pool_spec.size }}
+    }
+    ],
+  {% endif %}
+  {% if docker_cis_config.insecure_registries is defined and docker_cis_config.insecure_registries %}
+  "insecure-registries": [
+    {% for registry in docker_cis_config.insecure_registries %}
+    "{{ registry }}"{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
+  {% endif %}
+  "default-ulimits": {
+    "nofile": {
+      "Name": "nofile",
+      "Soft": 1024,
+      "Hard": 1024
+    }
+  },
+  {% if docker_cis_config.userns_remap != "" %}
+  "userns-remap": "{{ docker_cis_config.userns_remap }}",
+  {% endif %}
+  "cgroup-parent": "docker.slice",
+  "storage-driver": "{{ docker_cis_config.storage_driver | default('overlay2') }}",
+  "log-driver": "{{ docker_cis_config.log_driver }}",
+  {% if docker_cis_config.log_driver != "syslog" }
+  "log-opts": {
+    "max-size": "{{ docker_cis_config['log_opts']['max-size'] }}",
+    "max-file": "{{ docker_cis_config['log_opts']['max-file'] }}"
+  },
+  {% endif}
+  "live-restore": {{ docker_cis_config.live_restore | lower }},
+  "userland-proxy": {{ docker_cis_config.userland_proxy | lower }},
+  "no-new-privileges": {{ docker_cis_config.no_new_privileges | lower }}
+}

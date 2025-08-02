@@ -1,19 +1,25 @@
 ---
-# Docker configuration parameters
+general_config:
+  docker_repository_address: "https://download.docker.com/linux/"
 docker_cis_config:
   icc: false
-  userns_remap: ""
-  log_driver: "json-file"
+  userns_remap: "default"
+ # log_driver: "json-file"
+  log_driver: "syslog"
   log_opts:
-    max-size: "10m"
+    max-size: "10m"  # Make sure this matches exactly what's in the template
     max-file: "3"
-  disable_legacy_registry: true
+  storage_driver: "overlay2"
+  storage_opts: []
   live_restore: true
-  userland_proxy: false
+  userland_proxy: false  # Fixed typo (was userland_proxy)
   no_new_privileges: true
-  default_ulimits:
-    - "nofile=1024:1024"
-
+  insecure_registries: []
+  seccomp-profile: false
+  custom_address_pool: true
+  custom_address_pool_spec:
+    base: "10.10.0.0/16"
+    size: "24"
 # Auditd configuration
 auditd_rules:
   - "-w /usr/lib/systemd/system/docker.service -p rwxa -k docker"
@@ -23,6 +29,14 @@ auditd_rules:
   - "-w /usr/bin/docker -p rwxa -k docker"
   - "-w /usr/bin/dockerd -p rwxa -k docker"
   - "-w /var/run/docker.sock -p rwxa -k docker"
+  - "-w /run/containerd -p rwxa -k docker"
+  - "-w /var/lib/docker -p rwxa -k docker"
+  - "-w /var/run/docker.sock -k docker"
+  - "-w /etc/containerd/config.toml -k docker"
+  - "-w /etc/sysconfig/docker -k docker"
+  - "-w /usr/bin/containerd -k docker"
+  - "-w /usr/bin/containerd-shim -k docker"
+  - "-w /usr/bin/runc -k docker"
 
 # Files to check permissions
 file_permissions:

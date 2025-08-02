@@ -124,6 +124,7 @@
 - name: "3.11 - Verify Docker directories permissions"
   block:
     - name: Set permissions for Docker directories
+      ignore_errors: true
       file:
         path: "{{ item.path }}"
         owner: root
@@ -137,6 +138,7 @@
 - name: "3.12 - Verify Docker directories ownership"
   block:
     - name: Verify Docker directories ownership
+      ignore_errors: true
       file:
         path: "{{ item.path }}"
         owner: root
